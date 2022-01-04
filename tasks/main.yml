@@ -1,0 +1,45 @@
+---
+# tasks file for wordpress_role
+- name: Create a network
+  docker_network:
+    name: "{{ network }}"
+
+- name: start mariadb containers
+  docker_container:
+    name: "{{ mariadb_container_name }}"
+    image: "{{ mariadb_container_name }}"
+    state: started
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+      MYSQL_DATABASE: "{{ mysql_database }}"
+      MYSQL_USER: "{{ mysql_user }}"
+      MYSQL_PASSWORD: "{{ mysql_password }}"
+    ports:
+      - "{{ mysql_port }}:3306"
+    volumes:
+      - mysqlData:/var/lib/mysql
+
+- name: start wordpress containers
+  docker_container:
+    name: "{{ wordpress_container_name }}"
+    image: "{{ wordpress_container_name }}"
+    state: started
+    env:
+      WORDPRESS_DB_HOST: mysql_host
+      WORDPRESS_DB_USER: "{{ mysql_user }}"
+      WORDPRESS_DB_PASSWORD: "{{ mysql_password }}"
+      WORDPRESS_DB_NAME: "{{ mysql_database }}"
+    ports:
+      - 80:80        
+    links:
+      - "{{ mariadb_container_name }}:mysql_host"
+    volumes:
+      - wordpressData:/var/www/html
+
+- name: Add a container to a network, leaving existing containers connected
+  docker_network:
+    name: "{{ network }}"
+    connected:
+      - "{{ mariadb_container_name }}"
+      - "{{ wordpress_container_name }}"
+    appends: yes
